@@ -53,7 +53,8 @@ func (w *Wal) Init(dir string) *memtable.Tree {
 
 	w.file = f
 	w.path = walPath
-	return nil
+	w.mu = sync.Mutex{}
+	return w.LoadToMemory()
 }
 
 // LoadToMemory 通过wal.log文件初始化Wal,加载文件到内存

@@ -27,9 +27,8 @@ func NewTree() *Tree {
 	return t
 }
 
-//func (t *Tree) Init() {
-//
-//}
+// Init 初始化树
+func (t *Tree) Init() {}
 
 func (t *Tree) Size() int {
 	return t.size

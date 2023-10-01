@@ -14,242 +14,156 @@
 
 package tung
 
+import (
+	"encoding/json"
+	"github.com/lvtuwjl/tungdb/tung/config"
+	"github.com/lvtuwjl/tungdb/tung/kv"
+	"github.com/lvtuwjl/tungdb/tung/memtable"
+	"github.com/lvtuwjl/tungdb/tung/sstable"
+	"github.com/lvtuwjl/tungdb/tung/wal"
+	"log"
+	"os"
+)
+
 //const maxMmapStep = 1 << 30 // 1GB
-//
-//// maxMapSize represents the largest mmap size supported by Bolt.
-//const maxMapSize = 0xFFFFFFFFFFFF // 256TB
-//
-//// maxAllocSize is the size used when creating array pointers.
-//const maxAllocSize = 0x7FFFFFFF
-//
-//// Default values if not set in a DB instance.
-//const (
-//	DefaultMaxBatchSize  int = 1000
-//	DefaultMaxBatchDelay     = 10 * time.Millisecond
-//	DefaultAllocSize         = 16 * 1024 * 1024
-//)
-//
-//type DB struct {
-//	StrictMode    int
-//	NoSync        bool
-//	NoGrowSync    bool
-//	MmapFlags     int
-//	MaxBatchSize  int
-//	MaxBatchDelay time.Duration
-//	AllocSize     int
-//	path          string
-//	file          *os.File
-//	lockfile      *os.File
-//	dataref       []byte
-//	data          *[maxMapSize]byte
-//	datasz        int
-//	filesz        int
-//	meta0         *meta
-//	meta1         *meta
-//	pageSize      int
-//	opened        bool
-//	rwtx          *Tx
-//	txs           []*Tx
-//	freelist      *freelist
-//	stats         Stats
-//	pagePool      sync.Pool
-//	batchMu       sync.Mutex
-//	batch         *batch
-//	rwlock        sync.Mutex
-//	metalock      sync.Mutex
-//	mmaplock      sync.RWMutex
-//	statlock      sync.RWMutex
-//
-//	ops struct {
-//		writeAt func(b []byte, off int64) (n int, err error)
-//	}
-//	readOnly bool
-//}
-//
-//type Stats struct {
-//	FreePageN     int
-//	PendingPageN  int
-//	FreeAlloc     int
-//	FreelistInuse int
-//	TxN           int
-//	OpenTxN       int
-//	TxStats       TxStats
-//}
-//
-//type batch struct {
-//	db    *DB
-//	timer *time.Timer
-//	start sync.Once
-//	calls []call
-//}
-//
-//type call struct {
-//	fn  func(*Tx) error
-//	err chan<- error
-//}
-//
-//type Options struct {
-//	Timeout         time.Duration
-//	NoGrowSync      bool
-//	ReadOnly        bool
-//	MmapFlags       int
-//	InitialMmapSize int
-//}
-//
-//var DefaultOptions = &Options{
-//	Timeout:    0,
-//	NoGrowSync: false,
-//}
-//
-//func Open(path string, mode os.FileMode, options *Options) (*DB, error) {
-//	var db = &DB{opened: true}
-//
-//	if options == nil {
-//		options = DefaultOptions
-//	}
-//
-//	db.NoGrowSync = options.NoGrowSync
-//	db.MmapFlags = options.MmapFlags
-//
-//	db.MaxBatchSize = DefaultMaxBatchSize
-//	db.MaxBatchDelay = DefaultMaxBatchDelay
-//	db.AllocSize = DefaultAllocSize
-//
-//	flag := os.O_RDWR
-//	if options.ReadOnly {
-//		flag = os.O_RDONLY
-//		db.readOnly = true
-//	}
-//
-//	db.path = path
-//	var err error
-//	if db.file, err = os.OpenFile(db.path, flag|os.O_CREATE, mode); err != nil {
-//		_ = db.file.Close()
-//		return nil, err
-//	}
-//
-//	// lock
-//	if err := syscall.Flock(int(db.file.Fd()), 0); err != nil {
-//		_ = db.file.Close()
-//		return nil, err
-//	}
-//
-//	db.ops.writeAt = db.file.WriteAt
-//
-//	if info, err := db.file.Stat(); err != nil {
-//		return nil, err
-//	} else if info.Size() == 0 {
-//		//if err:= db.init();err!=nil{
-//		//	return nil,err
-//		//}
-//	} else {
-//		var buf [0x1000]byte
-//		if _, err := db.file.WriteAt(buf[:], 0); err == nil {
-//			//m:=
-//			fmt.Println()
-//		}
-//	}
-//
-//	db.pagePool = sync.Pool{
-//		New: func() interface{} {
-//			return make([]byte, db.pageSize)
-//		},
-//	}
-//
-//	if _, err := syscall.Mmap(int(db.file.Fd()), 0, 0, 0, 0); err != nil {
-//		_ = db.file.Close()
-//		return nil, err
-//	}
-//
-//	db.freelist = nil
-//	//db.freelist.read(db.pa)
-//
-//	return db, err
-//}
-//
-//func (db *DB) mmap(minsz int) error {
-//	db.mmaplock.Lock()
-//	defer db.mmaplock.Unlock()
-//
-//	info, err := db.file.Stat()
-//	if err != nil {
-//		return fmt.Errorf("mmap stst error: %s", err)
-//	} else if int(info.Size()) < db.pageSize*2 {
-//		return fmt.Errorf("file size too small")
-//	}
-//
-//	return nil
-//}
-//
-//func (db *DB) munmap() error {
-//	if err := munmap(db); err != nil {
-//		return fmt.Errorf("unmap error: %s", err.Error())
-//	}
-//	return nil
-//}
-//
-//// munmap unmaps a DB's data file from memory.
-//func munmap(db *DB) error {
-//	// Ignore the unmap if we have no mapped data.
-//	if db.dataref == nil {
-//		return nil
-//	}
-//
-//	// Unmap using the original byte slice.
-//	err := syscall.Munmap(db.dataref)
-//	db.dataref = nil
-//	db.data = nil
-//	db.datasz = 0
-//	return err
-//}
-//
-//func (db *DB) mmapSize(size int) (int, error) {
-//	// Double the size from 32KB until 1GB
-//	for i := uint(15); i <= 30; i++ {
-//		if size <= 1<<i {
-//			return 1 << i, nil
-//		}
-//	}
-//
-//	if size > maxMapSize {
-//		return 0, fmt.Errorf("mmap too large")
-//	}
-//
-//	// If larger than 1GB then grow by 1GB at a time.
-//	sz := int64(size)
-//	if remainder := sz % int64(maxMmapStep); remainder > 0 {
-//		sz += int64(maxMmapStep) - remainder
-//	}
-//
-//	pageSize := int64(db.pageSize)
-//	if (sz % pageSize) != 0 {
-//		sz = ((sz / pageSize) + 1) * pageSize
-//	}
-//
-//	if sz > maxMapSize {
-//		sz = maxMapSize
-//	}
-//
-//	return int(sz), nil
-//}
-//
-//func (db *DB) Close() error {
-//	db.rwlock.Lock()
-//	defer db.rwlock.Unlock()
-//
-//	db.metalock.Lock()
-//	defer db.metalock.Unlock()
-//
-//	db.mmaplock.RLock()
-//	defer db.mmaplock.RUnlock()
-//	return db.close()
-//}
-//
-//func (db *DB) close() error {
-//	// todo handle
-//	return nil
-//}
-//
-//func (db *DB) pageInBuffer(b []byte, id pgid) *page {
-//	return (*page)(unsafe.Pointer(&b[id*pgid(db.pageSize)]))
-//}
+
+// Start 启动数据库
+func Start(con config.Config) {
+	if database != nil {
+		return
+	}
+	// 将配置保存到内存中
+	log.Println("Loading a Configuration File")
+	config.Init(con)
+	// 初始化数据库
+	log.Println("Initializing the database")
+	initDatabase(con.DataDir)
+
+	// 数据库启动前进行一次数据压缩
+	log.Println("Performing background checks...")
+	// 检查内存
+	checkMemory()
+	// 检查压缩数据库文件
+	database.TableTree.Check()
+	// 启动后台线程
+	go Check()
+}
+
+// 初始化 Database，从磁盘文件中还原 SSTable、WalF、内存表等
+func initDatabase(dir string) {
+	database = &Database{
+		MemoryTree: &memtable.Tree{},
+		Wal:        &wal.Wal{},
+		TableTree:  &sstable.TableTree{},
+	}
+	// 从磁盘文件中恢复数据
+	// 如果目录不存在，则为空数据库
+	if _, err := os.Stat(dir); err != nil {
+		log.Printf("The %s directory does not exist. The directory is being created\r\n", dir)
+		err := os.Mkdir(dir, 0666)
+		if err != nil {
+			log.Println("Failed to create the database directory")
+			panic(err)
+		}
+	}
+	// 从数据目录中，加载 WalF、database 文件
+	// 非空数据库，则开始恢复数据，加载 WalF 和 SSTable 文件
+	memoryTree := database.Wal.Init(dir)
+
+	database.MemoryTree = memoryTree
+	log.Println("Loading database...")
+	database.TableTree.Init(dir)
+}
+
+type Database struct {
+	// 内存表
+	MemoryTree *memtable.Tree
+	// SSTable 列表
+	TableTree *sstable.TableTree
+	// WalF 文件句柄
+	Wal *wal.Wal
+}
+
+// 数据库，全局唯一实例
+var database *Database
+
+// Get 获取一个元素
+func Get[T any](key string) (T, bool) {
+	log.Print("Get ", key)
+	// 先查内存表
+	value, result := database.MemoryTree.Get(key)
+
+	if result == kv.StatusSuccess {
+		return getInstance[T](value.Value)
+	}
+
+	// 查 SsTable 文件
+	if database.TableTree != nil {
+		value, result := database.TableTree.Search(key)
+		if result == kv.StatusSuccess {
+			return getInstance[T](value.Value)
+		}
+	}
+	var nilV T
+	return nilV, false
+}
+
+// Set 插入元素
+func Set[T any](key string, value T) bool {
+	log.Print("Insert ", key, ",")
+	data, err := kv.Marshal(value)
+	if err != nil {
+		log.Println(err)
+		return false
+	}
+
+	_, _ = database.MemoryTree.Put(key, data)
+
+	// 写入 wal.log
+	database.Wal.Write(kv.KV{
+		Key:    key,
+		Value:  data,
+		Status: kv.StatusDeleted,
+	})
+	return true
+}
+
+// DeleteAndGet 删除元素并尝试获取旧的值，
+// 返回的 bool 表示是否有旧值，不表示是否删除成功
+func DeleteAndGet[T any](key string) (T, bool) {
+	log.Print("Delete ", key)
+	value, success := database.MemoryTree.Delete(key)
+
+	if success {
+		// 写入 wal.log
+		database.Wal.Write(kv.KV{
+			Key:    key,
+			Value:  nil,
+			Status: kv.StatusDeleted,
+		})
+		return getInstance[T](value.Value)
+	}
+	var nilV T
+	return nilV, false
+}
+
+// Delete 删除元素
+func Delete[T any](key string) {
+	log.Print("Delete ", key)
+	database.MemoryTree.Delete(key)
+	database.Wal.Write(kv.KV{
+		Key:    key,
+		Value:  nil,
+		Status: kv.StatusDeleted,
+	})
+}
+
+// 将字节数组转为类型对象
+func getInstance[T any](data []byte) (T, bool) {
+	var value T
+	err := json.Unmarshal(data, &value)
+	if err != nil {
+		log.Println(err)
+	}
+	return value, true
+}
