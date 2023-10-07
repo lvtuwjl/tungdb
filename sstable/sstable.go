@@ -1,10 +1,11 @@
 package sstable
 
 import (
-	"github.com/lvtuwjl/tungdb/tung/kv"
 	"log"
 	"os"
 	"sync"
+
+	"github.com/lvtuwjl/tungdb/tung/kv"
 )
 
 type SSTable struct {

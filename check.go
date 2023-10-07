@@ -1,9 +1,10 @@
 package tung
 
 import (
-	"github.com/lvtuwjl/tungdb/tung/config"
 	"log"
 	"time"
+
+	"github.com/lvtuwjl/tungdb/tung/config"
 )
 
 func Check() {

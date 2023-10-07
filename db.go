@@ -16,13 +16,14 @@ package tung
 
 import (
 	"encoding/json"
+	"log"
+	"os"
+
 	"github.com/lvtuwjl/tungdb/tung/config"
 	"github.com/lvtuwjl/tungdb/tung/kv"
 	"github.com/lvtuwjl/tungdb/tung/memtable"
 	"github.com/lvtuwjl/tungdb/tung/sstable"
 	"github.com/lvtuwjl/tungdb/tung/wal"
-	"log"
-	"os"
 )
 
 //const maxMmapStep = 1 << 30 // 1GB

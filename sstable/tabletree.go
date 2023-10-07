@@ -4,8 +4,6 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	"github.com/lvtuwjl/tungdb/tung/config"
-	"github.com/lvtuwjl/tungdb/tung/kv"
 	"io/ioutil"
 	"log"
 	"os"
@@ -15,6 +13,9 @@ import (
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/lvtuwjl/tungdb/tung/config"
+	"github.com/lvtuwjl/tungdb/tung/kv"
 )
 
 // TableTree 树
